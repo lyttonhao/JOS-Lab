@@ -211,7 +211,7 @@ boot_alloc(uint32_t n)
 void
 mem_init(void)
 {
-	uint32_t cr0;
+	uint32_t cr0, cr4;
 	size_t n;
 
 	// Find out how much memory the machine has (npages & npages_basemem).
@@ -224,6 +224,9 @@ mem_init(void)
 	// create initial page directory.
 	kern_pgdir = (pde_t *) boot_alloc(PGSIZE);
 	memset(kern_pgdir, 0, PGSIZE);
+	
+	cr4 = rcr4();
+	lcr4(cr4 | CR4_PSE); //Open Page Size Extensions
 
 	//////////////////////////////////////////////////////////////////////
 	// Recursively insert PD in itself as a page table, to form
@@ -290,7 +293,7 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, KERNBASE, ~KERNBASE+1, (physaddr_t)0, PTE_W);
+	boot_map_region(kern_pgdir, KERNBASE, ~KERNBASE+1, (physaddr_t)0, PTE_PS | PTE_W);
 		//2^32-KERNBASE = ~KERNBASE+1
 
 
@@ -451,7 +454,11 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	pte_t * pt, *result;
 	struct PageInfo * newpage;
 
+
 	pt = pgdir + PDX(va);//the first page table entry
+
+	if ( (*pt) & PTE_PS) return pt;
+
 	if ( (*pt) & PTE_P ) 
 	{
 		result = ((pte_t *) KADDR( PTE_ADDR(*pt) )) + PTX(va) ; //!
@@ -485,14 +492,27 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 	size_t i;
 	pte_t * pt;
-	
-	for (i = 0;i < size;i += PGSIZE)
+
+	if (perm & PTE_PS)
 	{
-		pt = pgdir_walk( pgdir, (void *) va, true);
-		if (pt != NULL)
-			*pt = ((pa+i) & 0xfffff000) | perm | PTE_P;
-		va += PGSIZE;
+	//	cprintf("%x %x\n",size, PTSIZE);
+		for (i = 0;i < size;i += PTSIZE)
+		{
+			pt = pgdir + PDX(va);
+			*pt = ((pa+i) & 0xffc00000) | perm | PTE_P;
+			va += PTSIZE;
+		}
 	}
+	else 
+	{
+			for (i = 0;i < size;i += PGSIZE)
+			{
+				pt = pgdir_walk( pgdir, (void *) va, true);
+				if (pt != NULL)
+					*pt = ((pa+i) & 0xfffff000) | perm | PTE_P;
+				va += PGSIZE;
+			}
+		 }
 	// Fill this function in
 }
 
@@ -821,6 +841,8 @@ check_va2pa(pde_t *pgdir, uintptr_t va)
 	pgdir = &pgdir[PDX(va)];
 	if (!(*pgdir & PTE_P))
 		return ~0;
+	if (*pgdir & PTE_PS)
+		return (*pgdir & 0xffc00000)+(va & 0x003fffff);
 	p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
 	if (!(p[PTX(va)] & PTE_P))
 		return ~0;

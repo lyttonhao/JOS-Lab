@@ -45,6 +45,8 @@ delay(void)
 #define   COM_LSR_TXRDY	0x20	//   Transmit buffer avail
 #define   COM_LSR_TSRE	0x40	//   Transmitter off
 
+
+
 static bool serial_exists;
 
 static int
@@ -158,10 +160,14 @@ cga_init(void)
 }
 
 
+extern int Now_color;
 
 static void
 cga_putc(int c)
 {
+
+	c = c + (Now_color << 8);
+
 	// if no attribute given, then use black on white
 	if (!(c & ~0xFF))
 		c |= 0x0700;

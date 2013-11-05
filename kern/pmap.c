@@ -8,8 +8,10 @@
 
 #include <kern/pmap.h>
 #include <kern/kclock.h>
+
 #include <kern/env.h>
 #include <kern/monitor.h>
+
 
 // These variables are set by i386_detect_memory()
 size_t npages;			// Amount of physical memory (in pages)
@@ -247,6 +249,7 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	envs = (struct Env *) boot_alloc( sizeof(struct Env) * NENV);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -280,6 +283,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+	boot_map_region(kern_pgdir, UENVS, ROUNDUP( sizeof(struct Env) * NENV, PGSIZE), PADDR( (void *)envs ), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -652,6 +656,30 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	uintptr_t l, r;
+	pte_t *pt;
+
+	l = (uintptr_t)ROUNDUP((char *)va, PGSIZE);
+	r = (uintptr_t)va + len;
+	if (l != (uintptr_t)va)
+	{
+		pt = pgdir_walk(env->env_pgdir, va, false);
+		if (((uintptr_t)va >= ULIM) || (pt == NULL) 
+				|| ((*pt & perm) != perm))
+		{
+			user_mem_check_addr = (uintptr_t)va;
+			return -E_FAULT;
+		}
+	}
+	for (;l < r;l += PGSIZE)
+	{
+		pt = pgdir_walk(env->env_pgdir, (char *)l, false);
+		if (l >= ULIM || (pt == NULL) || ((*pt & perm) != perm))
+		{
+			user_mem_check_addr = l;
+			return -E_FAULT;
+		}
+	}
 
 	return 0;
 }

@@ -57,7 +57,7 @@ int mon_singlestep(int argc, char **argv, struct Trapframe *tf)
 		info.eip_fn_namelen, info.eip_fn_name,
 		(addr-info.eip_fn_addr));
 
-	extern struct Env *curenv;
+	//extern struct Env *curenv;
 	tf->tf_eflags |= FL_TF;
 	env_run(curenv);
 
@@ -76,7 +76,7 @@ int mon_continue(int argc, char **argv, struct Trapframe *tf)
 
 	tf->tf_eflags &= ~FL_TF;
 	
-	extern struct Env *curenv;
+	//extern struct Env *curenv;
 	env_run(curenv);
 
 	return 0;

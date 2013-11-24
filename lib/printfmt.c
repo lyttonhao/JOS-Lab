@@ -8,6 +8,9 @@
 #include <inc/stdarg.h>
 #include <inc/error.h>
 
+
+int Now_color;
+
 /*
  * Space or zero padding and a field width are supported for the numeric
  * formats only.
@@ -89,7 +92,9 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 	unsigned long long num;
 	int base, lflag, width, precision, altflag;
 	char padc;
+	int bg_c, fg_c;
 
+	Now_color = 0;
 	while (1) {
 		while ((ch = *(unsigned char *) fmt++) != '%') {
 			if (ch == '\0')
@@ -161,7 +166,27 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		case 'c':
 			putch(va_arg(ap, int), putdat);
 			break;
-
+		// color
+		case 'C':
+			bg_c = 0; fg_c = 0;
+			++fmt;
+			while (*fmt != ',' && *fmt != ')') //background color
+			{
+				bg_c = bg_c * 10 + (*fmt-'0');
+				++fmt;
+			}
+			if (*fmt != ')')
+			{
+				++fmt;
+				while (*fmt != ')')  //foreground color
+				{
+					fg_c = fg_c * 10 + (*fmt-'0');
+					++fmt;
+				}
+			}
+			++fmt;
+			Now_color = (bg_c << 4) + fg_c;
+			break;
 		// error message
 		case 'e':
 			err = va_arg(ap, int);
@@ -208,10 +233,13 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		// (unsigned) octal
 		case 'o':
 			// Replace this with your code.
-			putch('X', putdat);
-			putch('X', putdat);
-			putch('X', putdat);
-			break;
+			num = getint(&ap, lflag); //new
+			base = 8;          //new
+			goto number;        //new
+	//		putch('X', putdat);
+	//		putch('X', putdat);
+	//		putch('X', putdat);
+	//		break;
 
 		// pointer
 		case 'p':

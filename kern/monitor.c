@@ -11,6 +11,7 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+#include <kern/env.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -25,10 +26,86 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "backtrace", mon_backtrace},
+	{ "showmappings", "Display physical page mappings and permission bits", mon_showmappings},
+	{ "change_perm", "Change permission of pages", mon_change_perm},
+	{ "dump", "Dump the contents of a range", mon_dump},
+	{ "continue", "continue execution frome the current location", mon_continue},
+	{ "singlestep", "single-step one instruction", mon_singlestep}
+
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
 /***** Implementations of basic kernel monitor commands *****/
+
+int mon_singlestep(int argc, char **argv, struct Trapframe *tf)
+{
+	if (tf->tf_trapno != T_BRKPT && tf->tf_trapno != T_DEBUG)
+	{
+		cprintf("The trapno is not Break Point or Debug\n");
+		return -1;
+	}
+	cprintf("single step\n");
+
+
+	struct Eipdebuginfo info;
+	uintptr_t addr;
+
+	addr = (uintptr_t) tf->tf_eip;
+	debuginfo_eip(addr, &info);
+	cprintf("Now instructoin is:%s:%d: %.*s+%d\n", info.eip_file, info.eip_line,
+		info.eip_fn_namelen, info.eip_fn_name,
+		(addr-info.eip_fn_addr));
+
+	//extern struct Env *curenv;
+	tf->tf_eflags |= FL_TF;
+	env_run(curenv);
+
+	return 0;
+}
+
+
+int mon_continue(int argc, char **argv, struct Trapframe *tf)
+{
+	if (tf->tf_trapno != T_BRKPT && tf->tf_trapno != T_DEBUG)
+	{
+		cprintf("The trapno is not Break Point or Debug\n");
+		return -1;
+	}
+	cprintf("continue to execute\n");
+
+	tf->tf_eflags &= ~FL_TF;
+	
+	//extern struct Env *curenv;
+	env_run(curenv);
+
+	return 0;
+}
+
+int mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+
+	if (argc != 3) cprintf("showmappings error");
+	else showmappings(argc, argv, tf);
+
+	return 0;
+}
+
+int mon_change_perm(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 3) cprintf("change_perm error");
+	else change_perm(argc, argv, tf);
+
+	return 0;
+}
+
+int mon_dump(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 4) cprintf("dump error");
+	else dump(argc, argv, tf);
+
+	return 0;
+}
 
 int
 mon_help(int argc, char **argv, struct Trapframe *tf)
@@ -60,6 +137,30 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	uint32_t *Ebp;
+    uint32_t ebp, eip, arg[5], i;
+	struct Eipdebuginfo info;
+	uintptr_t addr;
+
+	cprintf("Stack backtrace:\n");
+	Ebp = (uint32_t *) read_ebp();
+	while (Ebp != 0)
+	{
+		ebp =(int) Ebp;
+		eip = *(Ebp+1);
+		addr = (uintptr_t) eip;
+		cprintf("  ebp %08x eip %08x args",ebp, eip);
+		for (i = 0;i < 5;++i) arg[i] = *(Ebp+i+2);
+	//	cprintf("  ebp %08x eip %08x args",ebp, eip);
+		for (i = 0;i < 5;++i)
+			cprintf(" %08x",arg[i]);
+		cprintf("\n");
+		debuginfo_eip(addr, &info);
+		cprintf("      %s:%d: %.*s+%d\n", info.eip_file, info.eip_line,
+			   	info.eip_fn_namelen, info.eip_fn_name,
+			   	(addr-info.eip_fn_addr));
+		Ebp = (uint32_t *)(*Ebp);
+	}
 	return 0;
 }
 
@@ -117,8 +218,12 @@ monitor(struct Trapframe *tf)
 	cprintf("Welcome to the JOS kernel monitor!\n");
 	cprintf("Type 'help' for a list of commands.\n");
 
+
 	if (tf != NULL)
 		print_trapframe(tf);
+
+	//cprintf("%C(8,4)Hello %C(2,7)every %C(6,8)one \n");
+
 
 	while (1) {
 		buf = readline("K> ");

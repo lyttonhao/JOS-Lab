@@ -12,6 +12,20 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 
+
+static int
+sys_env_set_priority(envid_t envid, uint32_t priority)
+{
+	struct Env *env;
+	int r;
+
+	r = envid2env(envid, &env, 1);
+	if (r < 0) return r;
+	env->env_priority = priority;
+
+	return 0;
+}
+
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -415,6 +429,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 
 	switch (syscallno)
 	{
+		case SYS_env_set_priority:
+			r = sys_env_set_priority( (envid_t)a1, (int)a2 );
+			break;
 		case SYS_ipc_recv:
 			r = sys_ipc_recv( (void *)a1 );
 			break;

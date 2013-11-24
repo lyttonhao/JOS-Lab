@@ -31,22 +31,36 @@ sched_yield(void)
 	// LAB 4: Your code here.
 	struct Env *envptr;	
 	int tot = 0;
+	struct Env *highest;
 
 	if (thiscpu->cpu_env != NULL) envptr = thiscpu->cpu_env;
 	else envptr = envs;
 	
 	envptr++;
 	if (envptr >= envs + NENV) envptr = envs;
+	highest = NULL;
 	while (tot <= NENV)
 	{
-		if (envptr->env_status == ENV_RUNNABLE) break;
+		if (envptr->env_status == ENV_RUNNABLE) 
+		{
+			if (highest == NULL || 
+					envptr->env_priority < highest->env_priority)
+				highest = envptr;
+		}
 		++tot;
 		++envptr;	
 		if (envptr >= envs + NENV) envptr = envs;
 	}
-	if (envptr->env_status == ENV_RUNNABLE)
+	if (thiscpu->cpu_env != NULL && 
+			thiscpu->cpu_env->env_status == ENV_RUNNING)
 	{
-		env_run(envptr);
+		if (highest == NULL || 
+				thiscpu->cpu_env->env_priority < highest->env_priority)
+			highest = thiscpu->cpu_env;
+	}
+	if (highest != NULL)
+	{
+		env_run(highest);
 	}
 	else if (thiscpu->cpu_env != NULL &&    //!!
 			thiscpu->cpu_env->env_status == ENV_RUNNING) 

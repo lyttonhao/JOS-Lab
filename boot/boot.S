@@ -55,6 +55,8 @@ seta20.2:
   ljmp    $PROT_MODE_CSEG, $protcseg
 
   .code32                     # Assemble for 32-bit mode
+#   ljmp    $PROT_MODE_CSEG, $protcseg
+
 protcseg:
   # Set up the protected-mode data segment registers
   movw    $PROT_MODE_DSEG, %ax    # Our data segment selector

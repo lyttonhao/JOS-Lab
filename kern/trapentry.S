@@ -42,15 +42,117 @@
 	pushl $(num);							\
 	jmp _alltraps
 
+#define myhdler(name, num)	\
+	.text;				\
+	.globl name;		/* define global symbol for 'name' */	\
+	.type name, @function;	/* symbol type is function */		\
+	.align 2;		/* align function definition */		\
+	name:			/* function starts here */		\
+	pushl $(num);							\
+	jmp _alltraps;							\
+	.data;                                                     \
+	.long name
+
+
+#define myhdler_noec(name, num)					\
+	.text;							\
+	.globl name;							\
+	.type name, @function;						\
+	.align 2;							\
+	name:								\
+	pushl $0;							\
+	pushl $(num);							\
+	jmp _alltraps;						\
+	.data;                                                \
+	.long name
+
+.data
+	.global func_entry
+	.align 2
+func_entry: 
+
 .text
 
 /*
  * Lab 3: Your code here for generating entry points for the different traps.
  */
+/*	TRAPHANDLER_NOEC(divide_entry, T_DIVIDE)
+	TRAPHANDLER_NOEC(debug_entry, T_DEBUG)
+	TRAPHANDLER_NOEC(nmi_entry, T_NMI)
+	TRAPHANDLER_NOEC(brkpt_entry, T_BRKPT)
+	TRAPHANDLER_NOEC(oflow_entry, T_OFLOW)
+	TRAPHANDLER_NOEC(bound_entry, T_BOUND)
+	TRAPHANDLER_NOEC(illop_entry, T_ILLOP)
+	TRAPHANDLER_NOEC(device_entry, T_DEVICE)
+	TRAPHANDLER(dblflt_entry, T_DBLFLT)
+	TRAPHANDLER(tss_entry, T_TSS)
+	TRAPHANDLER(segnp_entry, T_SEGNP)
+	TRAPHANDLER(stack_entry, T_STACK)
+	TRAPHANDLER(gpflt_entry, T_GPFLT)
+	TRAPHANDLER(pgflt_entry, T_PGFLT)
+	TRAPHANDLER_NOEC(fperr_entry, T_FPERR)
+	TRAPHANDLER(align_entry, T_ALIGN)
+	TRAPHANDLER_NOEC(mchk_entry, T_MCHK)
+	TRAPHANDLER_NOEC(simderr_entry, T_SIMDERR)
 
+	TRAPHANDLER_NOEC(syscall_entry, T_SYSCALL)
+*/
+	myhdler_noec(divide_entry, T_DIVIDE)
+	myhdler_noec(debug_entry, T_DEBUG)
+	myhdler_noec(nmi_entry, T_NMI)
+	myhdler_noec(brkpt_entry, T_BRKPT)
+	myhdler_noec(oflow_entry, T_OFLOW)
+	myhdler_noec(bound_entry, T_BOUND)
+	myhdler_noec(illop_entry, T_ILLOP)
+	myhdler_noec(device_entry, T_DEVICE)
+	myhdler(dblflt_entry, T_DBLFLT)
+	myhdler(emtpy_Coproc, 9)
+	myhdler(tss_entry, T_TSS)
+	myhdler(segnp_entry, T_SEGNP)
+	myhdler(stack_entry, T_STACK)
+	myhdler(gpflt_entry, T_GPFLT)
+	myhdler(pgflt_entry, T_PGFLT)
+	myhdler(empty_res, 15)
+	myhdler_noec(fperr_entry, T_FPERR)
+	myhdler(align_entry, T_ALIGN)
+	myhdler_noec(mchk_entry, T_MCHK)
+	myhdler_noec(simderr_entry, T_SIMDERR)
+
+	TRAPHANDLER_NOEC(syscall_entry, T_SYSCALL)
+
+	TRAPHANDLER_NOEC(IRQ0, IRQ_OFFSET+0);
+	TRAPHANDLER_NOEC(IRQ1, IRQ_OFFSET+1);
+	TRAPHANDLER_NOEC(IRQ2, IRQ_OFFSET+2);
+	TRAPHANDLER_NOEC(IRQ3, IRQ_OFFSET+3);
+	TRAPHANDLER_NOEC(IRQ4, IRQ_OFFSET+4);
+	TRAPHANDLER_NOEC(IRQ5, IRQ_OFFSET+5);
+	TRAPHANDLER_NOEC(IRQ6, IRQ_OFFSET+6);
+	TRAPHANDLER_NOEC(IRQ7, IRQ_OFFSET+7);
+	TRAPHANDLER_NOEC(IRQ8, IRQ_OFFSET+8);
+	TRAPHANDLER_NOEC(IRQ9, IRQ_OFFSET+9);
+	TRAPHANDLER_NOEC(IRQ10, IRQ_OFFSET+10);
+	TRAPHANDLER_NOEC(IRQ11, IRQ_OFFSET+11);
+	TRAPHANDLER_NOEC(IRQ12, IRQ_OFFSET+12);
+	TRAPHANDLER_NOEC(IRQ13, IRQ_OFFSET+13);
+	TRAPHANDLER_NOEC(IRQ14, IRQ_OFFSET+14);
+	TRAPHANDLER_NOEC(IRQ15, IRQ_OFFSET+15);
 
 
 /*
  * Lab 3: Your code here for _alltraps
  */
+_alltraps:
+	pushw $0
+	pushw %ds
+	pushw $0
+	pushw %es
+	pushal
+
+	movl $GD_KD, %eax #--#
+	movw %ax, %ds
+	movw %ax, %es
+
+	pushl %esp
+
+	call trap
 

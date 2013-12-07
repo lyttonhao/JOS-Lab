@@ -85,8 +85,13 @@ spawn(const char *prog, const char **argv)
 	//
 	//   - Start the child process running with sys_env_set_status().
 
+		
 	if ((r = open(prog, O_RDONLY)) < 0)
+	{
+	
 		return r;
+	}
+	
 	fd = r;
 
 	// Read elf header
@@ -301,6 +306,20 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+	uint32_t addr;
+	int r;
+
+	for (addr = 0;addr < UTOP;addr += PGSIZE)
+		if ((uvpd[PDX(addr)] & PTE_P) && (uvpd[PDX(addr)] & PTE_U) &&
+				(uvpt[addr >> PGSHIFT] & PTE_P) && 
+				(uvpt[addr >> PGSHIFT] & PTE_U) &&
+				(uvpt[addr >> PGSHIFT] & PTE_SHARE))
+		{
+			r = sys_page_map(0, (void *)addr, child, (void *)addr, 
+					uvpt[addr >> PGSHIFT] & PTE_SYSCALL);
+			if (r < 0) return r;
+		}
+	
 	return 0;
 }
 

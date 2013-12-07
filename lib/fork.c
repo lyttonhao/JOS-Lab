@@ -75,6 +75,12 @@ duppage(envid_t envid, unsigned pn)
 	//panic("duppage not implemented");
 	pt = (pte_t )(uvpt[pn]);
 
+	if (pt & PTE_SHARE)
+	{
+		r = sys_page_map(0, addr, envid, addr, pt & PTE_SYSCALL);
+		r1 = 0;
+	}
+	else 
 	if ((pt & PTE_W) > 0 || (pt & PTE_COW) > 0)
 	{
 		r = sys_page_map(0, addr, envid, addr, PTE_U | PTE_COW | PTE_P);

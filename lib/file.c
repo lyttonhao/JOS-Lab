@@ -16,9 +16,10 @@ static int
 fsipc(unsigned type, void *dstva)
 {
 	static envid_t fsenv;
+	
 	if (fsenv == 0)
 		fsenv = ipc_find_env(ENV_TYPE_FS);
-
+	
 	static_assert(sizeof(fsipcbuf) == PGSIZE);
 
 	if (debug)
@@ -71,18 +72,19 @@ open(const char *path, int mode)
 
 	if (strlen(path) >= MAXPATHLEN)
 		return -E_BAD_PATH;
-
+	
 	if ((r = fd_alloc(&fd)) < 0)
 		return r;
-
+	
 	strcpy(fsipcbuf.open.req_path, path);
 	fsipcbuf.open.req_omode = mode;
 
 	if ((r = fsipc(FSREQ_OPEN, fd)) < 0) {
+	
 		fd_close(fd, 0);
 		return r;
 	}
-
+	
 	return fd2num(fd);
 }
 
